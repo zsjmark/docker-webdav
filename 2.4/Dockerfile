@@ -1,4 +1,4 @@
-FROM httpd:alpine
+FROM httpd:2.4.35-alpine
 
 # These variables are inherited from the httpd:alpine image:
 # ENV HTTPD_PREFIX /usr/local/apache2
@@ -8,13 +8,21 @@ FROM httpd:alpine
 COPY conf/ conf/
 
 RUN set -ex; \
-    # Create empty default DocumentRoot.
+    # Add User abc Group abc 在这个用户下运行.
+    addgroup -g 1000 abc && \
+    adduser -u 1000 -G abc -D -H -s /bin/false abc && \
+    id abc; \
+    \
+    # Create empty default DocumentRoot.    
     mkdir -p "/var/www/html"; \
     # Create directories for Dav data and lock database.
     mkdir -p "/var/lib/dav/data"; \
     touch "/var/lib/dav/DavLock"; \
-    chown -R www-data:www-data "/var/lib/dav"; \
+    chown -R abc:abc "/var/lib/dav"; \
     \
+    #Mirror repositories	
+	sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories; \
+	\
     # Enable DAV modules.
     for i in dav dav_fs; do \
         sed -i -e "/^#LoadModule ${i}_module.*/s/^#//" "conf/httpd.conf"; \
@@ -32,7 +40,7 @@ RUN set -ex; \
     \
     # Run httpd as "www-data" (instead of "daemon").
     for i in User Group; do \
-        sed -i -e "s|^$i .*|$i www-data|" "conf/httpd.conf"; \
+        sed -i -e "s|^$i .*|$i abc|" "conf/httpd.conf"; \
     done; \
     \
     # Include enabled configs and sites.
